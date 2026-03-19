@@ -1,0 +1,210 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: gcp-infrastructure
+  title: GCP Infrastructure Setup
+  description: Provisions production-grade GCP infrastructure for a client using versioned Opt IT modules.
+  tags:
+    - gcp
+    - terraform
+    - infrastructure
+    - phase-2b
+spec:
+  owner: devops
+  type: infrastructure
+
+  parameters:
+
+    - title: Step 1 - Client Information
+      required:
+        - client_name
+        - environment
+        - repoUrl
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
+
+        environment:
+          title: Environment
+          type: string
+          enum: [dev, staging, prod]
+          enumNames: [Development, Staging, Production]
+          ui:widget: radio
+
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    - title: Step 2 - GCP Resources
+      required:
+        - gcp_resources
+      properties:
+        gcp_resources:
+          title: GCP Resources
+          type: object
+          description: Select GCP project, confirm credentials, and choose resources to provision
+          ui:field: GcpResourcePicker
+          ui:options:
+            environment: ${{ parameters.environment }}
+
+    - title: Step 3 - CI/CD Pipeline
+      properties:
+        setup_cicd:
+          title: Set up CI/CD pipeline?
+          type: boolean
+          default: false
+          ui:widget: radio
+
+      dependencies:
+        setup_cicd:
+          oneOf:
+            - properties:
+                setup_cicd:
+                  enum: [false]
+            - properties:
+                setup_cicd:
+                  enum: [true]
+                cicd_tool:
+                  title: CI/CD Tool
+                  type: string
+                  enum: [github-actions, jenkins]
+                  enumNames: [GitHub Actions, Jenkins]
+                  default: github-actions
+              required:
+                - cicd_tool
+
+  steps:
+
+    - id: fetch-vpc
+      name: Fetch VPC Module
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-vpc-v1.0.0/terraform/gcp/networking/vpc
+        targetPath: ./terraform/modules/vpc
+
+    - id: fetch-firewall
+      name: Fetch Firewall Module
+      if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('firewall') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-firewall-v1.0.0/terraform/gcp/networking/firewall
+        targetPath: ./terraform/modules/firewall
+
+    - id: fetch-gce
+      name: Fetch GCE Module
+      if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gce') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gce-v1.0.0/terraform/gcp/compute/gce
+        targetPath: ./terraform/modules/gce
+
+    - id: fetch-gcs
+      name: Fetch GCS Module
+      if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gcs') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gcs-v1.0.0/terraform/gcp/storage/gcs
+        targetPath: ./terraform/modules/gcs
+
+    - id: fetch-cloud-sql
+      name: Fetch Cloud SQL Module
+      if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('cloud_sql') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-cloud-sql-v1.0.0/terraform/gcp/database/cloud-sql
+        targetPath: ./terraform/modules/cloud-sql
+
+    - id: generate-terraform-root
+      name: Generate Terraform Root Configuration
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-catalog/tree/main/templates/gcp-infrastructure/skeleton/terraform
+        targetPath: ./terraform
+        values:
+          client_name:          ${{ parameters.client_name }}
+          environment:          ${{ parameters.environment }}
+          project_id:           ${{ parameters.gcp_resources.foundation.project_id }}
+          region:               ${{ parameters.gcp_resources.foundation.region }}
+          zone:                 ${{ parameters.gcp_resources.foundation.zone }}
+          provision_vpc:        ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('vpc') }}
+          provision_firewall:   ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('firewall') }}
+          provision_gce:        ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gce') }}
+          provision_gcs:        ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gcs') }}
+          provision_cloud_sql:  ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('cloud_sql') }}
+          public_subnet_cidr:   ${{ parameters.gcp_resources.config.public_subnet_cidr }}
+          private_subnet_cidr:  ${{ parameters.gcp_resources.config.private_subnet_cidr }}
+          enable_cloud_nat:     ${{ parameters.gcp_resources.config.enable_cloud_nat }}
+          allowed_ssh_ranges:   ${{ parameters.gcp_resources.config.allowed_ssh_source_ranges }}
+          db_port:              ${{ parameters.gcp_resources.config.db_port }}
+          machine_type:         ${{ parameters.gcp_resources.config.machine_type }}
+          boot_disk_type:       ${{ parameters.gcp_resources.config.boot_disk_type }}
+          bucket_suffix:        ${{ parameters.gcp_resources.config.bucket_suffix }}
+          storage_class:        ${{ parameters.gcp_resources.config.storage_class }}
+          enable_versioning:    ${{ parameters.gcp_resources.config.enable_versioning }}
+          db_engine:            ${{ parameters.gcp_resources.config.db_engine }}
+          db_version:           ${{ parameters.gcp_resources.config.db_version }}
+          tier:                 ${{ parameters.gcp_resources.config.tier }}
+          availability_type:    ${{ parameters.gcp_resources.config.availability_type }}
+
+    - id: fetch-github-actions
+      name: Fetch GitHub Actions Workflows
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'github-actions' }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/github-actions/workflows
+        targetPath: ./.github/workflows
+
+    - id: fetch-jenkins
+      name: Fetch Jenkins Pipeline
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'jenkins' }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/jenkins
+        targetPath: ./cicd/jenkins
+
+    - id: publish-pr
+      name: Open Pull Request on Client Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: infra/${{ parameters.client_name }}-${{ parameters.environment }}-gcp-${{ parameters.gcp_resources.resources or 'setup' }}
+        targetBranchName: main
+        update: true
+        title: "feat(infra): provision GCP ${{ parameters.environment }} infrastructure for ${{ parameters.client_name }}"
+        description: |
+          ## GCP Infrastructure Onboarding 🚀
+
+          Provisioned by **Opt IT Backstage** — do not edit these files manually.
+
+          ### Configuration Summary
+
+          | Field | Value |
+          |---|---|
+          | **Client** | ${{ parameters.client_name }} |
+          | **Environment** | ${{ parameters.environment }} |
+          | **GCP Project** | ${{ parameters.gcp_resources.foundation.project_id }} |
+          | **Region** | ${{ parameters.gcp_resources.foundation.region }} |
+          | **Resources** | ${{ parameters.gcp_resources.resources }} |
+
+          ### Next Steps
+
+          1. Review all configuration values
+          2. Run: `gcloud auth application-default login`
+          3. Set `TF_VAR_admin_password` if Cloud SQL was selected
+          4. Merge this PR
+          5. Run `terraform init && terraform plan` from the `terraform/` directory
+          6. Run `terraform apply` after plan is reviewed
+
+          > ⚠️ Review all values before merging.
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

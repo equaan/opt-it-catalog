@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: gcp-infrastructure-template
+  description: Opt IT GCP Infrastructure Template
+spec:
+  targets:
+    - ./template.yaml
