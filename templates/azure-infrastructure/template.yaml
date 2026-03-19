@@ -1,0 +1,256 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: azure-infrastructure
+  title: Azure Infrastructure Setup
+  description: Provisions production-grade Azure infrastructure for a client using versioned Opt IT modules. Supports Terraform.
+  tags:
+    - azure
+    - terraform
+    - infrastructure
+    - phase-2
+spec:
+  owner: devops
+  type: infrastructure
+
+  parameters:
+
+    # ─────────────────────────────────────────
+    # PAGE 1 — Client Information
+    # ─────────────────────────────────────────
+    - title: Step 1 - Client Information
+      required:
+        - client_name
+        - environment
+        - repoUrl
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
+
+        environment:
+          title: Environment
+          type: string
+          enum:
+            - dev
+            - staging
+            - prod
+          enumNames:
+            - Development
+            - Staging
+            - Production
+          ui:widget: radio
+
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    # ─────────────────────────────────────────
+    # PAGE 2 — Azure Resource Selection
+    # Uses AzureResourcePicker custom field extension
+    # ─────────────────────────────────────────
+    - title: Step 2 - Azure Resources
+      required:
+        - azure_resources
+      properties:
+        azure_resources:
+          title: Azure Resources
+          type: object
+          description: Select Azure location, confirm credentials, and choose resources to provision
+          ui:field: AzureResourcePicker
+          ui:options:
+            environment: ${{ parameters.environment }}
+
+    # ─────────────────────────────────────────
+    # PAGE 3 — CI/CD Selection
+    # ─────────────────────────────────────────
+    - title: Step 3 - CI/CD Pipeline
+      properties:
+        setup_cicd:
+          title: Set up CI/CD pipeline?
+          type: boolean
+          default: false
+          ui:widget: radio
+
+      dependencies:
+        setup_cicd:
+          oneOf:
+            - properties:
+                setup_cicd:
+                  enum: [false]
+
+            - properties:
+                setup_cicd:
+                  enum: [true]
+                cicd_tool:
+                  title: CI/CD Tool
+                  type: string
+                  enum: [github-actions, jenkins]
+                  enumNames: [GitHub Actions, Jenkins]
+                  default: github-actions
+                github_actions_workflows:
+                  title: Select Workflows
+                  type: array
+                  items:
+                    type: string
+                    enum: [build, test, deploy]
+                    enumNames: [Build, Test, Deploy]
+                  uniqueItems: true
+                  ui:widget: checkboxes
+              required:
+                - cicd_tool
+
+  # ─────────────────────────────────────────
+  # STEPS
+  # ─────────────────────────────────────────
+  steps:
+
+    # ── RESOURCE GROUP ──────────────────────
+    - id: fetch-resource-group
+      name: Fetch Resource Group Module
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-resource-group-v1.0.0/terraform/azure/base/resource-group
+        targetPath: ./terraform/modules/resource-group
+
+    # ── VNET ────────────────────────────────
+    - id: fetch-vnet
+      name: Fetch VNet Module
+      if: ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('vnet') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-vnet-v1.0.0/terraform/azure/networking/vnet
+        targetPath: ./terraform/modules/vnet
+
+    # ── NSG ─────────────────────────────────
+    - id: fetch-nsg
+      name: Fetch NSG Module
+      if: ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('nsg') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-nsg-v1.0.0/terraform/azure/networking/nsg
+        targetPath: ./terraform/modules/nsg
+
+    # ── VM ──────────────────────────────────
+    - id: fetch-vm
+      name: Fetch VM Module
+      if: ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('vm') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-vm-v1.0.0/terraform/azure/compute/vm
+        targetPath: ./terraform/modules/vm
+
+    # ── BLOB STORAGE ────────────────────────
+    - id: fetch-blob
+      name: Fetch Blob Storage Module
+      if: ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('blob') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-blob-storage-v1.0.0/terraform/azure/storage/blob
+        targetPath: ./terraform/modules/blob-storage
+
+    # ── SQL FLEXIBLE ────────────────────────
+    - id: fetch-sql
+      name: Fetch SQL Flexible Server Module
+      if: ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('sql') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-azure-sql-flexible-v1.0.0/terraform/azure/database/sql-flexible
+        targetPath: ./terraform/modules/sql-flexible
+
+    # ── ROOT TERRAFORM ──────────────────────
+    - id: generate-terraform-root
+      name: Generate Terraform Root Configuration
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-catalog/tree/main/templates/azure-infrastructure/skeleton/terraform
+        targetPath: ./terraform
+        values:
+          client_name:               ${{ parameters.client_name }}
+          environment:               ${{ parameters.environment }}
+          location:                  ${{ parameters.azure_resources.foundation.location }}
+          resource_group_suffix:     ${{ parameters.azure_resources.foundation.resource_group_suffix }}
+          provision_vnet:            ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('vnet') }}
+          provision_nsg:             ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('nsg') }}
+          provision_vm:              ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('vm') }}
+          provision_blob:            ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('blob') }}
+          provision_sql:             ${{ parameters.azure_resources.resources and parameters.azure_resources.resources.includes('sql') }}
+          vnet_address_space:        ${{ parameters.azure_resources.config.vnet_address_space }}
+          public_subnet_prefixes:    ${{ parameters.azure_resources.config.public_subnet_prefixes }}
+          private_subnet_prefixes:   ${{ parameters.azure_resources.config.private_subnet_prefixes }}
+          enable_nat_gateway:        ${{ parameters.azure_resources.config.enable_nat_gateway }}
+          allowed_ssh_source:        ${{ parameters.azure_resources.config.allowed_ssh_source_prefixes }}
+          db_port:                   ${{ parameters.azure_resources.config.db_port }}
+          vm_size:                   ${{ parameters.azure_resources.config.vm_size }}
+          admin_username:            ${{ parameters.azure_resources.config.admin_username }}
+          storage_suffix:            ${{ parameters.azure_resources.config.storage_suffix }}
+          replication_type:          ${{ parameters.azure_resources.config.account_replication_type }}
+          container_names:           ${{ parameters.azure_resources.config.container_names }}
+          db_engine:                 ${{ parameters.azure_resources.config.db_engine }}
+          db_version:                ${{ parameters.azure_resources.config.db_version }}
+          sku_name:                  ${{ parameters.azure_resources.config.sku_name }}
+          ha_mode:                   ${{ parameters.azure_resources.config.high_availability_mode }}
+
+    # ── CI/CD ──────────────────────────────
+    - id: fetch-github-actions
+      name: Fetch GitHub Actions Workflows
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'github-actions' }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/github-actions/workflows
+        targetPath: ./.github/workflows
+
+    - id: fetch-jenkins
+      name: Fetch Jenkins Pipeline
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'jenkins' }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/jenkins
+        targetPath: ./cicd/jenkins
+
+    # ── PUBLISH PR ─────────────────────────
+    - id: publish-pr
+      name: Open Pull Request on Client Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: infra/${{ parameters.client_name }}-${{ parameters.environment }}-azure-${{ parameters.azure_resources.resources or 'setup' }}
+        targetBranchName: main
+        update: true
+        title: "feat(infra): provision Azure ${{ parameters.environment }} infrastructure for ${{ parameters.client_name }}"
+        description: |
+          ## Azure Infrastructure Onboarding 🚀
+
+          Provisioned by **Opt IT Backstage** — do not edit these files manually.
+
+          ### Configuration Summary
+
+          | Field | Value |
+          |---|---|
+          | **Client** | ${{ parameters.client_name }} |
+          | **Environment** | ${{ parameters.environment }} |
+          | **Azure Location** | ${{ parameters.azure_resources.foundation.location }} |
+          | **Resources** | ${{ parameters.azure_resources.resources }} |
+          | **CI/CD** | ${{ parameters.cicd_tool or 'none' }} |
+
+          ### Next Steps
+
+          1. Review all configuration values
+          2. Ensure `ARM_SUBSCRIPTION_ID`, `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID` are set
+          3. Set `TF_VAR_admin_password` if SQL was selected
+          4. Merge this PR
+          5. Run `terraform init && terraform plan` from the `terraform/` directory
+          6. Run `terraform apply` after plan is reviewed
+
+          > ⚠️ Review all values before merging.
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

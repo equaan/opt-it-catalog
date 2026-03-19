@@ -6,3 +6,4 @@ metadata:
 spec:
   targets:
     - ./templates/aws-infrastructure/template.yaml
+    - ./templates/azure-infrastructure/template.yaml

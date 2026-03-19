@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: azure-infrastructure-template
+  description: Opt IT Azure Infrastructure Template
+spec:
+  targets:
+    - ./template.yaml
