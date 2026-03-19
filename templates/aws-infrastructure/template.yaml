@@ -1,256 +1,49 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: dynamic-client-onboarding
-  title: Dynamic Client Infrastructure Setup
-  description: Configure IaC, CI/CD, and Observability for an existing client repository.
+  name: aws-infrastructure
+  title: AWS Infrastructure Setup
+  description: Provisions production-grade AWS infrastructure for a client using versioned Opt IT modules. Supports Terraform and CloudFormation.
   tags:
-    - github
-    - dynamic
+    - aws
+    - terraform
+    - cloudformation
     - infrastructure
-    - setup
+    - phase-1
 spec:
   owner: devops
-  type: service
+  type: infrastructure
 
   parameters:
+
     # ─────────────────────────────────────────
-    # PAGE 1: Client Information
+    # PAGE 1 — Client Information
     # ─────────────────────────────────────────
     - title: Step 1 - Client Information
       required:
         - client_name
+        - environment
         - repoUrl
       properties:
         client_name:
           title: Client Name
           type: string
-          description: Name of the client (e.g. client-A)
-        repoUrl:
-          title: Client Repository
-          type: string
-          ui:field: RepoUrlPicker
-          ui:options:
-            allowedHosts:
-              - github.com
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
 
-    # ─────────────────────────────────────────
-    # PAGE 2: Module Selection
-    # Ansible is now its own separate option — not under IaC
-    # String radio + oneOf — only reliable conditional in Backstage RJSF v4
-    # ─────────────────────────────────────────
-    - title: Step 2 - Module & Resource Selection
-      required:
-        - selected_modules
-      properties:
-        selected_modules:
-          title: What do you need to set up?
+        environment:
+          title: Environment
           type: string
           enum:
-            - iac
-            - ansible
-            - cicd
-            - iac_ansible
-            - iac_cicd
-            - ansible_cicd
-            - all
+            - dev
+            - staging
+            - prod
           enumNames:
-            - Infrastructure as Code only (Terraform / CloudFormation)
-            - Ansible only
-            - CI/CD only
-            - IaC + Ansible
-            - IaC + CI/CD
-            - Ansible + CI/CD
-            - Everything (IaC + Ansible + CI/CD)
+            - Development
+            - Staging
+            - Production
           ui:widget: radio
 
-        # Top-level declarations so ui: hints are always preserved
-        iac_tool:
-          title: IaC Tool
-          type: string
-          enum:
-            - terraform
-            - cloudformation
-          enumNames:
-            - Terraform
-            - CloudFormation
-          default: terraform
-
-        cicd_tool:
-          title: CI/CD Tool
-          type: string
-          enum:
-            - github-actions
-            - jenkins
-          enumNames:
-            - GitHub Actions
-            - Jenkins
-          default: github-actions
-
-        github_actions_workflows:
-          title: Select GitHub Actions Workflows
-          type: array
-          items:
-            type: string
-            enum:
-              - build
-              - test
-              - deploy
-            enumNames:
-              - Build
-              - Test
-              - Deploy
-          uniqueItems: true
-          ui:widget: checkboxes
-
-      dependencies:
-        selected_modules:
-          oneOf:
-            # IaC only — show IaC tool, no Ansible, no CI/CD
-            - properties:
-                selected_modules:
-                  enum: [iac]
-                iac_tool:
-                  title: IaC Tool
-                  type: string
-                  enum: [terraform, cloudformation]
-                  enumNames: [Terraform, CloudFormation]
-                  default: terraform
-              required:
-                - iac_tool
-
-            # Ansible only — no extra fields needed, site.yml handles everything
-            - properties:
-                selected_modules:
-                  enum: [ansible]
-
-            # CI/CD only — show CI/CD tool + workflows
-            - properties:
-                selected_modules:
-                  enum: [cicd]
-                cicd_tool:
-                  title: CI/CD Tool
-                  type: string
-                  enum: [github-actions, jenkins]
-                  enumNames: [GitHub Actions, Jenkins]
-                  default: github-actions
-                github_actions_workflows:
-                  title: Select GitHub Actions Workflows
-                  type: array
-                  items:
-                    type: string
-                    enum: [build, test, deploy]
-                    enumNames: [Build, Test, Deploy]
-                  uniqueItems: true
-                  ui:widget: checkboxes
-              required:
-                - cicd_tool
-
-            # IaC + Ansible
-            - properties:
-                selected_modules:
-                  enum: [iac_ansible]
-                iac_tool:
-                  title: IaC Tool
-                  type: string
-                  enum: [terraform, cloudformation]
-                  enumNames: [Terraform, CloudFormation]
-                  default: terraform
-              required:
-                - iac_tool
-
-            # IaC + CI/CD
-            - properties:
-                selected_modules:
-                  enum: [iac_cicd]
-                iac_tool:
-                  title: IaC Tool
-                  type: string
-                  enum: [terraform, cloudformation]
-                  enumNames: [Terraform, CloudFormation]
-                  default: terraform
-                cicd_tool:
-                  title: CI/CD Tool
-                  type: string
-                  enum: [github-actions, jenkins]
-                  enumNames: [GitHub Actions, Jenkins]
-                  default: github-actions
-                github_actions_workflows:
-                  title: Select GitHub Actions Workflows
-                  type: array
-                  items:
-                    type: string
-                    enum: [build, test, deploy]
-                    enumNames: [Build, Test, Deploy]
-                  uniqueItems: true
-                  ui:widget: checkboxes
-              required:
-                - iac_tool
-                - cicd_tool
-
-            # Ansible + CI/CD
-            - properties:
-                selected_modules:
-                  enum: [ansible_cicd]
-                cicd_tool:
-                  title: CI/CD Tool
-                  type: string
-                  enum: [github-actions, jenkins]
-                  enumNames: [GitHub Actions, Jenkins]
-                  default: github-actions
-                github_actions_workflows:
-                  title: Select GitHub Actions Workflows
-                  type: array
-                  items:
-                    type: string
-                    enum: [build, test, deploy]
-                    enumNames: [Build, Test, Deploy]
-                  uniqueItems: true
-                  ui:widget: checkboxes
-              required:
-                - cicd_tool
-
-            # Everything — IaC + Ansible + CI/CD
-            - properties:
-                selected_modules:
-                  enum: [all]
-                iac_tool:
-                  title: IaC Tool
-                  type: string
-                  enum: [terraform, cloudformation]
-                  enumNames: [Terraform, CloudFormation]
-                  default: terraform
-                cicd_tool:
-                  title: CI/CD Tool
-                  type: string
-                  enum: [github-actions, jenkins]
-                  enumNames: [GitHub Actions, Jenkins]
-                  default: github-actions
-                github_actions_workflows:
-                  title: Select GitHub Actions Workflows
-                  type: array
-                  items:
-                    type: string
-                    enum: [build, test, deploy]
-                    enumNames: [Build, Test, Deploy]
-                  uniqueItems: true
-                  ui:widget: checkboxes
-              required:
-                - iac_tool
-                - cicd_tool
-
-    # ─────────────────────────────────────────
-    # PAGE 3: AWS Region + Resource Selection
-    # Uses AwsResourcePicker custom field extension.
-    # No combinations needed — component handles everything.
-    # To add a new service: just add it to SERVICE_DEFINITIONS
-    # in AwsResourcePicker.tsx — zero template changes needed.
-    # ─────────────────────────────────────────
-    - title: Step 3 - Resource Confirmation
-      required:
-        - aws_region
-        - iac_resources
-      properties:
         aws_region:
           title: AWS Region
           type: string
@@ -266,217 +59,287 @@ spec:
             - EU West (Ireland)
             - AP Southeast (Singapore)
 
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    # ─────────────────────────────────────────
+    # PAGE 2 — IaC Tool Selection
+    # ─────────────────────────────────────────
+    - title: Step 2 - IaC Tool
+      required:
+        - iac_tool
+      properties:
+        iac_tool:
+          title: Infrastructure as Code Tool
+          type: string
+          enum:
+            - terraform
+            - cloudformation
+          enumNames:
+            - Terraform
+            - CloudFormation
+          ui:widget: radio
+          default: terraform
+
+    # ─────────────────────────────────────────
+    # PAGE 3 — AWS Resource Selection
+    # Uses AwsResourcePicker custom field extension
+    # ─────────────────────────────────────────
+    - title: Step 3 - AWS Resources
+      required:
+        - iac_resources
+      properties:
         iac_resources:
           title: AWS Resources
           type: object
-          description: Select the AWS resources you want to provision and configure them
+          description: Select the AWS resources to provision and configure each one
           ui:field: AwsResourcePicker
+
+    # ─────────────────────────────────────────
+    # PAGE 4 — CI/CD Selection
+    # ─────────────────────────────────────────
+    - title: Step 4 - CI/CD Pipeline
+      properties:
+        setup_cicd:
+          title: Set up CI/CD pipeline?
+          type: boolean
+          default: false
+          ui:widget: radio
+
+      dependencies:
+        setup_cicd:
+          oneOf:
+            - properties:
+                setup_cicd:
+                  enum: [false]
+
+            - properties:
+                setup_cicd:
+                  enum: [true]
+                cicd_tool:
+                  title: CI/CD Tool
+                  type: string
+                  enum: [github-actions, jenkins]
+                  enumNames: [GitHub Actions, Jenkins]
+                  default: github-actions
+                github_actions_workflows:
+                  title: Select Workflows
+                  type: array
+                  items:
+                    type: string
+                    enum: [build, test, deploy]
+                    enumNames: [Build, Test, Deploy]
+                  uniqueItems: true
+                  ui:widget: checkboxes
+              required:
+                - cicd_tool
 
   # ─────────────────────────────────────────
   # STEPS
-  # iac_resources is now an object from AwsResourcePicker:
-  #   parameters.iac_resources.resources → "vpc_ec2" string
-  #   parameters.iac_resources.config.vpc_cidr → config values
   # ─────────────────────────────────────────
   steps:
 
     # ── TERRAFORM ──────────────────────────
+
     - id: fetch-terraform-base
-      name: Fetch Terraform Base
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' }}
+      name: Generate Terraform Base
+      if: ${{ parameters.iac_tool === 'terraform' }}
       action: fetch:template
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/terraform/base
-        targetPath: ./iac/terraform/base
+        url: https://github.com/equaan/opt-it-modules/tree/main/terraform/aws/networking/vpc
+        targetPath: ./terraform/modules/vpc
         values:
-          client_name: ${{ parameters.client_name }}
-          aws_region: ${{ parameters.aws_region }}
+          client_name:    ${{ parameters.client_name }}
+          environment:    ${{ parameters.environment }}
+          aws_region:     ${{ parameters.aws_region }}
 
     - id: fetch-terraform-vpc
-      name: Fetch Terraform VPC
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
-      action: fetch:template
+      name: Fetch Terraform VPC Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/terraform/vpc
-        targetPath: ./iac/terraform/vpc
-        values:
-          client_name: ${{ parameters.client_name }}
-          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-vpc-v1.0.0/terraform/aws/networking/vpc
+        targetPath: ./terraform/modules/vpc
+
+    - id: fetch-terraform-subnets
+      name: Fetch Terraform Subnets Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-subnets-v1.0.0/terraform/aws/networking/subnets
+        targetPath: ./terraform/modules/subnets
+
+    - id: fetch-terraform-security-groups
+      name: Fetch Terraform Security Groups Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and (parameters.iac_resources.resources.includes('ec2') or parameters.iac_resources.resources.includes('rds')) }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-security-groups-v1.0.0/terraform/aws/networking/security-groups
+        targetPath: ./terraform/modules/security-groups
 
     - id: fetch-terraform-ec2
-      name: Fetch Terraform EC2
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
-      action: fetch:template
+      name: Fetch Terraform EC2 Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/terraform/ec2
-        targetPath: ./iac/terraform/ec2
-        values:
-          client_name: ${{ parameters.client_name }}
-          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-ec2-v1.0.0/terraform/aws/compute/ec2
+        targetPath: ./terraform/modules/ec2
 
     - id: fetch-terraform-s3
-      name: Fetch Terraform S3
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
-      action: fetch:template
+      name: Fetch Terraform S3 Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/terraform/s3
-        targetPath: ./iac/terraform/s3
-        values:
-          client_name: ${{ parameters.client_name }}
-          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-s3-v1.0.0/terraform/aws/storage/s3
+        targetPath: ./terraform/modules/s3
 
     - id: fetch-terraform-rds
-      name: Fetch Terraform RDS
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
+      name: Fetch Terraform RDS Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-rds-v1.0.0/terraform/aws/database/rds
+        targetPath: ./terraform/modules/rds
+
+    - id: fetch-terraform-iam
+      name: Fetch Terraform IAM Baseline Module
+      if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
+      action: fetch:plain
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-iam-baseline-v1.0.0/terraform/aws/iam/baseline
+        targetPath: ./terraform/modules/iam-baseline
+
+    - id: generate-terraform-root
+      name: Generate Terraform Root Configuration
+      if: ${{ parameters.iac_tool === 'terraform' }}
       action: fetch:template
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/terraform/rds
-        targetPath: ./iac/terraform/rds
+        url: https://github.com/equaan/opt-it-catalog/tree/main/templates/aws-infrastructure/skeleton/terraform
+        targetPath: ./terraform
         values:
-          client_name: ${{ parameters.client_name }}
-          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
+          client_name:         ${{ parameters.client_name }}
+          environment:         ${{ parameters.environment }}
+          aws_region:          ${{ parameters.aws_region }}
+          provision_vpc:       ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
+          provision_ec2:       ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
+          provision_s3:        ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
+          provision_rds:       ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
+          vpc_cidr:            ${{ parameters.iac_resources.config.vpc_cidr }}
+          ec2_instance_type:   ${{ parameters.iac_resources.config.ec2_instance_type }}
+          s3_versioning:       ${{ parameters.iac_resources.config.s3_versioning }}
+          rds_engine:          ${{ parameters.iac_resources.config.rds_engine }}
 
     # ── CLOUDFORMATION ─────────────────────
+
     - id: fetch-cfn-base
       name: Fetch CloudFormation Base
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' }}
-      action: fetch:template
+      if: ${{ parameters.iac_tool === 'cloudformation' }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/base
-        targetPath: ./iac/cloudformation/base
-        values:
-          client_name: ${{ parameters.client_name }}
-          aws_region: ${{ parameters.aws_region }}
+        url: https://github.com/equaan/opt-it-modules/tree/main/cloudformation/aws/base
+        targetPath: ./cloudformation/base
 
     - id: fetch-cfn-vpc
       name: Fetch CloudFormation VPC
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
-      action: fetch:template
+      if: ${{ parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/vpc
-        targetPath: ./iac/cloudformation/vpc
-        values:
-          client_name: ${{ parameters.client_name }}
-          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
+        url: https://github.com/equaan/opt-it-modules/tree/main/cloudformation/aws/networking/vpc
+        targetPath: ./cloudformation/vpc
 
     - id: fetch-cfn-ec2
       name: Fetch CloudFormation EC2
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
-      action: fetch:template
+      if: ${{ parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/ec2
-        targetPath: ./iac/cloudformation/ec2
-        values:
-          client_name: ${{ parameters.client_name }}
-          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
+        url: https://github.com/equaan/opt-it-modules/tree/main/cloudformation/aws/compute/ec2
+        targetPath: ./cloudformation/ec2
 
     - id: fetch-cfn-s3
       name: Fetch CloudFormation S3
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
-      action: fetch:template
+      if: ${{ parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/s3
-        targetPath: ./iac/cloudformation/s3
-        values:
-          client_name: ${{ parameters.client_name }}
-          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
+        url: https://github.com/equaan/opt-it-modules/tree/main/cloudformation/aws/storage/s3
+        targetPath: ./cloudformation/s3
 
     - id: fetch-cfn-rds
       name: Fetch CloudFormation RDS
-      if: ${{ (parameters.selected_modules === 'iac' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'all') and parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
-      action: fetch:template
+      if: ${{ parameters.iac_tool === 'cloudformation' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/iac/cloudformation/rds
-        targetPath: ./iac/cloudformation/rds
-        values:
-          client_name: ${{ parameters.client_name }}
-          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
-
-    # ── ANSIBLE ────────────────────────────
-    - id: fetch-ansible
-      name: Fetch Ansible Playbook
-      if: ${{ parameters.selected_modules === 'ansible' or parameters.selected_modules === 'iac_ansible' or parameters.selected_modules === 'ansible_cicd' or parameters.selected_modules === 'all' }}
-      action: fetch:template
-      input:
-        url: https://github.com/equaan/company-assets/tree/main/ansible
-        targetPath: ./ansible
-        values:
-          client_name: ${{ parameters.client_name }}
-          aws_region: ${{ parameters.aws_region }}
-          provision_vpc: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
-          provision_ec2: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('ec2') }}
-          provision_s3: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('s3') }}
-          provision_rds: ${{ parameters.iac_resources.resources and parameters.iac_resources.resources.includes('rds') }}
-          vpc_cidr: ${{ parameters.iac_resources.config.vpc_cidr }}
-          ec2_instance_type: ${{ parameters.iac_resources.config.ec2_instance_type }}
-          s3_versioning: ${{ parameters.iac_resources.config.s3_versioning }}
-          rds_engine: ${{ parameters.iac_resources.config.rds_engine }}
+        url: https://github.com/equaan/opt-it-modules/tree/main/cloudformation/aws/database/rds
+        targetPath: ./cloudformation/rds
 
     # ── CI/CD ──────────────────────────────
+
     - id: fetch-github-actions
       name: Fetch GitHub Actions Workflows
-      if: ${{ (parameters.selected_modules === 'cicd' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'ansible_cicd' or parameters.selected_modules === 'all') and parameters.cicd_tool === 'github-actions' }}
-      action: fetch:template
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'github-actions' }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/cicd/github_actions/.github/workflows
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/github-actions/workflows
         targetPath: ./.github/workflows
-        values:
-          client_name: ${{ parameters.client_name }}
-          workflows: ${{ parameters.github_actions_workflows }}
 
     - id: fetch-jenkins
       name: Fetch Jenkins Pipeline
-      if: ${{ (parameters.selected_modules === 'cicd' or parameters.selected_modules === 'iac_cicd' or parameters.selected_modules === 'ansible_cicd' or parameters.selected_modules === 'all') and parameters.cicd_tool === 'jenkins' }}
-      action: fetch:template
+      if: ${{ parameters.setup_cicd and parameters.cicd_tool === 'jenkins' }}
+      action: fetch:plain
       input:
-        url: https://github.com/equaan/company-assets/tree/main/cicd/jenkins
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/jenkins
         targetPath: ./cicd/jenkins
-        values:
-          client_name: ${{ parameters.client_name }}
 
     # ── PUBLISH PR ─────────────────────────
+
     - id: publish-pr
-      name: Open PR on Client Repository
+      name: Open Pull Request on Client Repository
       action: publish:github:pull-request
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        branchName: infra/${{ parameters.client_name }}-${{ parameters.selected_modules }}-${{ parameters.iac_resources.resources or parameters.cicd_tool or "setup" }}
+        branchName: infra/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.iac_resources.resources or parameters.cicd_tool or 'setup' }}
         targetBranchName: main
         update: true
-        title: "chore: setup infrastructure templates for ${{ parameters.client_name }}"
+        title: "feat(infra): provision AWS ${{ parameters.environment }} infrastructure for ${{ parameters.client_name }}"
         description: |
-          ## Infrastructure Onboarding 🚀
+          ## AWS Infrastructure Onboarding 🚀
 
-          This PR adds the infrastructure templates based on selections made in the onboarding form.
+          Provisioned by **Opt IT Backstage** — do not edit these files manually.
 
           ### Configuration Summary
+
           | Field | Value |
           |---|---|
           | **Client** | ${{ parameters.client_name }} |
-          | **Setup Type** | ${{ parameters.selected_modules }} |
-          | **IaC Tool** | ${{ parameters.iac_tool }} |
-          | **Resources** | ${{ parameters.iac_resources }} |
-          | **CI/CD Tool** | ${{ parameters.cicd_tool }} |
+          | **Environment** | ${{ parameters.environment }} |
           | **AWS Region** | ${{ parameters.aws_region }} |
+          | **IaC Tool** | ${{ parameters.iac_tool }} |
+          | **Resources** | ${{ parameters.iac_resources.resources }} |
+          | **CI/CD** | ${{ parameters.cicd_tool or 'none' }} |
 
-          ### Folder Structure Added
+          ### What Was Provisioned
+
           ```
-          iac/
-          └── <tool>/          ← terraform | cloudformation
-              ├── base/
-              ├── vpc/
-              ├── ec2/
-              ├── s3/
-              └── rds/
-          ansible/
-          └── site.yml         ← single playbook, all resources
-          cicd/
-          └── <tool>/          ← .github/workflows | jenkins
+          ${{ parameters.iac_resources.resources }}
           ```
 
-          > ⚠️ Please review all configurations before merging into main.
+          ### Next Steps
+
+          1. Review all configuration values
+          2. Add `TF_VAR_master_password` to GitHub Secrets (if RDS selected)
+          3. Merge this PR
+          4. Run `terraform init && terraform plan` from the `terraform/` directory
+          5. Run `terraform apply` after plan is reviewed
+
+          > ⚠️ Review all values before merging. Infrastructure changes are applied on merge.
 
   output:
     links:
       - title: View Pull Request
         url: ${{ steps['publish-pr'].output.remoteUrl }}
+      - title: Client Repository
+        url: https://github.com/${{ parameters.repoUrl }}
