@@ -114,6 +114,54 @@ terraform/
 docs/
 └── infrastructure.md ← auto-generated infrastructure summary
 ```
+### Azure Infrastructure (`templates/azure-infrastructure`)
+
+**What it does:** Provisions production-grade Azure infrastructure for a client.
+
+**Supported IaC tools:** Terraform
+
+**Supported resources:**
+- Resource Group (always provisioned — Azure foundation)
+- VNet + Subnets + NAT Gateway (networking)
+- NSG — Network Security Groups applied to subnets
+- VM — Linux Virtual Machine with encrypted OS disk
+- Blob Storage — Storage Account with private containers
+- SQL Flexible Server — PostgreSQL or MySQL with private networking
+
+**How to use:**
+1. Open Backstage at `http://localhost:3000/create`
+2. Select **Azure Infrastructure Setup**
+3. Fill in client name and environment
+4. Use the resource picker to select Azure location, confirm credentials, and choose resources
+5. Optionally add CI/CD
+6. Submit — a PR will open on the client's repo
+
+**Prerequisites before running `terraform apply`:**
+```bash
+export ARM_SUBSCRIPTION_ID="your-subscription-id"
+export ARM_CLIENT_ID="your-client-id"
+export ARM_CLIENT_SECRET="your-client-secret"
+export ARM_TENANT_ID="your-tenant-id"
+export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+export TF_VAR_admin_password="your-db-password"  # only if SQL selected
+```
+
+**What gets generated in the client repo:**
+```
+terraform/
+├── main.tf           ← all selected modules wired together
+├── variables.tf      ← pre-filled with your selections
+├── outputs.tf        ← outputs for selected resources
+└── modules/
+    ├── resource-group/   ← always present
+    ├── vnet/             ← if VNet selected
+    ├── nsg/              ← if NSG selected
+    ├── vm/               ← if VM selected
+    ├── blob-storage/     ← if Blob selected
+    └── sql-flexible/     ← if SQL selected
+docs/
+└── infrastructure.md     ← auto-generated infrastructure summary
+```
 
 ---
 
@@ -424,7 +472,8 @@ New templates won't appear in Backstage unless they're listed in the root `catal
 | Phase | Status | Template |
 |---|---|---|
 | Phase 1 | ✅ Complete | `aws-infrastructure` |
-| Phase 2 | 🔜 Planned | `azure-infrastructure`, `gcp-infrastructure` |
+| Phase 2 | ✅ Complete | `azure-infrastructure` |
+| Phase 2b | 🔜 Planned | `gcp-infrastructure` |
 | Phase 3 | 🔜 Planned | `cicd-pipeline`, `observability-stack` |
 | Phase 4 | 🔜 Planned | `security-baseline`, `container-platform` |
 | Phase 5 | 🔜 Planned | `full-onboarding` (orchestrates all templates) |
