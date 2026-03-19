@@ -1,0 +1,137 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: cicd-pipeline
+  title: CI/CD Pipeline Setup
+  description: Sets up CI/CD pipelines for a client repository. Supports GitHub Actions, Jenkins, GitLab CI, and ArgoCD.
+  tags:
+    - cicd
+    - github-actions
+    - jenkins
+    - gitlab-ci
+    - argocd
+    - phase-3
+spec:
+  owner: devops
+  type: cicd
+
+  parameters:
+
+    - title: Step 1 - Client Information
+      required:
+        - client_name
+        - environment
+        - repoUrl
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
+
+        environment:
+          title: Environment
+          type: string
+          enum: [dev, staging, prod]
+          enumNames: [Development, Staging, Production]
+          ui:widget: radio
+
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    - title: Step 2 - CI/CD Tools
+      required:
+        - cicd_config
+      properties:
+        cicd_config:
+          title: CI/CD Configuration
+          type: object
+          description: Select CI/CD tools and configure each pipeline
+          ui:field: CICDPicker
+
+  steps:
+
+    - id: fetch-github-actions
+      name: Fetch GitHub Actions Workflows
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('github_actions') }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/github-actions/workflows
+        targetPath: ./.github/workflows
+        values:
+          client_name: ${{ parameters.client_name }}
+          environment: ${{ parameters.environment }}
+
+    - id: fetch-jenkins
+      name: Fetch Jenkinsfile
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('jenkins') }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/jenkins
+        targetPath: ./
+        values:
+          client_name: ${{ parameters.client_name }}
+          environment: ${{ parameters.environment }}
+
+    - id: fetch-gitlab-ci
+      name: Fetch GitLab CI Config
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('gitlab_ci') }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/gitlab-ci
+        targetPath: ./
+        values:
+          client_name: ${{ parameters.client_name }}
+          environment: ${{ parameters.environment }}
+
+    - id: fetch-argocd
+      name: Fetch ArgoCD Manifests
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('argocd') }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/cicd/argocd/base
+        targetPath: ./argocd
+        values:
+          client_name:        ${{ parameters.client_name }}
+          environment:        ${{ parameters.environment }}
+          repo_url:           https://github.com/${{ parameters.repoUrl }}
+          cluster_url:        ${{ parameters.cicd_config.config.argocd_cluster_url }}
+          app_namespace:      ${{ parameters.cicd_config.config.argocd_app_namespace }}
+          manifests_path:     ${{ parameters.cicd_config.config.argocd_manifests_path }}
+          target_revision:    ${{ parameters.cicd_config.config.argocd_target_revision }}
+          argocd_prune:       ${{ parameters.cicd_config.config.argocd_prune }}
+          argocd_self_heal:   ${{ parameters.cicd_config.config.argocd_self_heal }}
+
+    - id: publish-pr
+      name: Open Pull Request on Client Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: cicd/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.cicd_config.tools or 'setup' }}
+        targetBranchName: main
+        update: true
+        title: "feat(cicd): add ${{ parameters.cicd_config.tools }} pipelines for ${{ parameters.client_name }}"
+        description: |
+          ## CI/CD Pipeline Setup 🚀
+
+          Provisioned by **Opt IT Backstage**.
+
+          ### Tools Added
+          | Tool | Status |
+          |---|---|
+          | GitHub Actions | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('github_actions') and '✅' or '❌' }} |
+          | Jenkins | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('jenkins') and '✅' or '❌' }} |
+          | GitLab CI | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('gitlab_ci') and '✅' or '❌' }} |
+          | ArgoCD | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('argocd') and '✅' or '❌' }} |
+
+          > Review pipeline configuration before merging.
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: observability-stack-template
+  description: Opt IT Observability Stack Template
+spec:
+  targets:
+    - ./template.yaml

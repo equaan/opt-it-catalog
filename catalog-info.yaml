@@ -8,3 +8,5 @@ spec:
     - ./templates/aws-infrastructure/template.yaml
     - ./templates/azure-infrastructure/template.yaml
     - ./templates/gcp-infrastructure/template.yaml
+    - ./templates/cicd-pipeline/template.yaml
+    - ./templates/observability-stack/template.yaml
