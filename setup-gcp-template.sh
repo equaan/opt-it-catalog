@@ -115,7 +115,7 @@ spec:
       name: Fetch VPC Module
       action: fetch:plain
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-vpc-v1.0.0/terraform/gcp/networking/vpc
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-vpc-v1.0.0/terraform/GCP/networking/vpc
         targetPath: ./terraform/modules/vpc
 
     - id: fetch-firewall
@@ -123,7 +123,7 @@ spec:
       if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('firewall') }}
       action: fetch:plain
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-firewall-v1.0.0/terraform/gcp/networking/firewall
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-firewall-v1.0.0/terraform/GCP/networking/firewall
         targetPath: ./terraform/modules/firewall
 
     - id: fetch-gce
@@ -131,7 +131,7 @@ spec:
       if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gce') }}
       action: fetch:plain
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gce-v1.0.0/terraform/gcp/compute/gce
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gce-v1.0.0/terraform/GCP/compute/gce
         targetPath: ./terraform/modules/gce
 
     - id: fetch-gcs
@@ -139,7 +139,7 @@ spec:
       if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('gcs') }}
       action: fetch:plain
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gcs-v1.0.0/terraform/gcp/storage/gcs
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-gcs-v1.0.0/terraform/GCP/storage/gcs
         targetPath: ./terraform/modules/gcs
 
     - id: fetch-cloud-sql
@@ -147,7 +147,7 @@ spec:
       if: ${{ parameters.gcp_resources.resources and parameters.gcp_resources.resources.includes('cloud_sql') }}
       action: fetch:plain
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-cloud-sql-v1.0.0/terraform/gcp/database/cloud-sql
+        url: https://github.com/equaan/opt-it-modules/tree/terraform-gcp-cloud-sql-v1.0.0/terraform/GCP/database/cloud-sql
         targetPath: ./terraform/modules/cloud-sql
 
     - id: generate-terraform-root
