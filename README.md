@@ -162,7 +162,33 @@ terraform/
 docs/
 └── infrastructure.md     ← auto-generated infrastructure summary
 ```
+### GCP Infrastructure (`templates/gcp-infrastructure`)
 
+**What it does:** Provisions production-grade GCP infrastructure for a client.
+
+**Supported IaC tools:** Terraform
+
+**Supported resources:**
+- VPC — global VPC with regional public and private subnets
+- Firewall — VPC-level rules using network tags
+- Compute Engine — GCE VM with Shielded VM enabled
+- Cloud Storage — GCS bucket with public access blocked
+- Cloud SQL — PostgreSQL or MySQL with private IP
+
+**Authentication:** Application Default Credentials (ADC)
+```bash
+gcloud auth application-default login
+```
+
+**Module versions:**
+
+| Module | Version |
+|---|---|
+| terraform-gcp-vpc | v1.0.0 |
+| terraform-gcp-firewall | v1.0.0 |
+| terraform-gcp-gce | v1.0.0 |
+| terraform-gcp-gcs | v1.0.0 |
+| terraform-gcp-cloud-sql | v1.0.0 |
 ---
 
 ## Adding a New Template
@@ -473,7 +499,7 @@ New templates won't appear in Backstage unless they're listed in the root `catal
 |---|---|---|
 | Phase 1 | ✅ Complete | `aws-infrastructure` |
 | Phase 2 | ✅ Complete | `azure-infrastructure` |
-| Phase 2b | 🔜 Planned | `gcp-infrastructure` |
+| Phase 2b | ✅ Complete | `gcp-infrastructure` |
 | Phase 3 | 🔜 Planned | `cicd-pipeline`, `observability-stack` |
 | Phase 4 | 🔜 Planned | `security-baseline`, `container-platform` |
 | Phase 5 | 🔜 Planned | `full-onboarding` (orchestrates all templates) |
