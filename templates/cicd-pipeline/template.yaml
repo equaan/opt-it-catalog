@@ -58,7 +58,7 @@ spec:
 
     - id: fetch-github-actions
       name: Fetch GitHub Actions Workflows
-      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('github_actions') }}
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('GitHub Actions') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/cicd/github-actions/workflows
@@ -69,7 +69,7 @@ spec:
 
     - id: fetch-jenkins
       name: Fetch Jenkinsfile
-      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('jenkins') }}
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('Jenkins') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/cicd/jenkins
@@ -80,7 +80,7 @@ spec:
 
     - id: fetch-gitlab-ci
       name: Fetch GitLab CI Config
-      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('gitlab_ci') }}
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('GitLab CI') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/cicd/gitlab-ci
@@ -91,21 +91,21 @@ spec:
 
     - id: fetch-argocd
       name: Fetch ArgoCD Manifests
-      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('argocd') }}
+      if: ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('ArgoCD') }}
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/cicd/argocd/base
         targetPath: ./argocd
         values:
-          client_name:        ${{ parameters.client_name }}
-          environment:        ${{ parameters.environment }}
-          repo_url:           https://github.com/${{ parameters.repoUrl }}
-          cluster_url:        ${{ parameters.cicd_config.config.argocd_cluster_url }}
-          app_namespace:      ${{ parameters.cicd_config.config.argocd_app_namespace }}
-          manifests_path:     ${{ parameters.cicd_config.config.argocd_manifests_path }}
-          target_revision:    ${{ parameters.cicd_config.config.argocd_target_revision }}
-          argocd_prune:       ${{ parameters.cicd_config.config.argocd_prune }}
-          argocd_self_heal:   ${{ parameters.cicd_config.config.argocd_self_heal }}
+          client_name:      ${{ parameters.client_name }}
+          environment:      ${{ parameters.environment }}
+          repo_url:         https://github.com/${{ parameters.repoUrl }}
+          cluster_url:      ${{ parameters.cicd_config.config.argocd_cluster_url }}
+          app_namespace:    ${{ parameters.cicd_config.config.argocd_app_namespace }}
+          manifests_path:   ${{ parameters.cicd_config.config.argocd_manifests_path }}
+          target_revision:  ${{ parameters.cicd_config.config.argocd_target_revision }}
+          argocd_prune:     ${{ parameters.cicd_config.config.argocd_prune }}
+          argocd_self_heal: ${{ parameters.cicd_config.config.argocd_self_heal }}
 
     - id: publish-pr
       name: Open Pull Request on Client Repository
@@ -115,7 +115,7 @@ spec:
         branchName: cicd/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.cicd_config.tools or 'setup' }}
         targetBranchName: main
         update: true
-        title: "feat(cicd): add ${{ parameters.cicd_config.tools }} pipelines for ${{ parameters.client_name }}"
+        title: "feat(cicd): add CI/CD pipelines for ${{ parameters.client_name }}"
         description: |
           ## CI/CD Pipeline Setup 🚀
 
@@ -124,10 +124,10 @@ spec:
           ### Tools Added
           | Tool | Status |
           |---|---|
-          | GitHub Actions | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('github_actions') and '✅' or '❌' }} |
-          | Jenkins | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('jenkins') and '✅' or '❌' }} |
-          | GitLab CI | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('gitlab_ci') and '✅' or '❌' }} |
-          | ArgoCD | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('argocd') and '✅' or '❌' }} |
+          | GitHub Actions | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('GitHub Actions') and '✅' or '❌' }} |
+          | Jenkins | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('Jenkins') and '✅' or '❌' }} |
+          | GitLab CI | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('GitLab CI') and '✅' or '❌' }} |
+          | ArgoCD | ${{ parameters.cicd_config.tools and parameters.cicd_config.tools.includes('ArgoCD') and '✅' or '❌' }} |
 
           > Review pipeline configuration before merging.
 
