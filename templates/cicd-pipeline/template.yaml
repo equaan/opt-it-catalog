@@ -112,7 +112,7 @@ spec:
       action: publish:github:pull-request
       input:
         repoUrl: ${{ parameters.repoUrl }}
-        branchName: cicd/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.cicd_config.tools or 'setup' }}
+        branchName: cicd/${{ parameters.client_name }}-${{ parameters.environment }}-setup
         targetBranchName: main
         update: true
         title: "feat(cicd): add CI/CD pipelines for ${{ parameters.client_name }}"
