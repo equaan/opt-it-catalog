@@ -16,6 +16,7 @@ This repository contains all Backstage template YAML files and skeleton code use
 - [Template YAML Reference](#template-yaml-reference)
 - [Registering Templates in Backstage](#registering-templates-in-backstage)
 - [Debugging a Failed Template Run](#debugging-a-failed-template-run)
+- [Key Lessons Learned](#key-lessons-learned)
 - [Common Mistakes To Avoid](#common-mistakes-to-avoid)
 
 ---
@@ -28,6 +29,11 @@ opt-it-catalog/
 ├── catalog-info.yaml                          ← registers all templates in Backstage
 │
 └── templates/
+    ├── client-onboarding/                     ← Phase 5 ✅ — start here for new clients
+    │   ├── template.yaml                      ← 7-step wizard combining all phases
+    │   ├── catalog-info.yaml
+    │   └── README.md
+    │
     ├── aws-infrastructure/                    ← Phase 1 ✅
     │   ├── template.yaml                      ← Backstage scaffolder template
     │   ├── catalog-info.yaml                  ← individual template registration
@@ -40,11 +46,37 @@ opt-it-catalog/
     │       └── docs/
     │           └── infrastructure.md          ← auto-generated infra docs
     │
-    ├── cicd-pipeline/                         ← Phase 3 🔜
-    ├── observability-stack/                   ← Phase 3 🔜
-    ├── security-baseline/                     ← Phase 4 🔜
-    ├── container-platform/                    ← Phase 4 🔜
-    └── full-onboarding/                       ← Phase 5 🔜
+    ├── azure-infrastructure/                  ← Phase 2 ✅
+    │   ├── template.yaml
+    │   ├── catalog-info.yaml
+    │   ├── README.md
+    │   └── skeleton/terraform/
+    │
+    ├── gcp-infrastructure/                    ← Phase 2b ✅
+    │   ├── template.yaml
+    │   ├── catalog-info.yaml
+    │   ├── README.md
+    │   └── skeleton/terraform/
+    │
+    ├── cicd-pipeline/                         ← Phase 3 ✅
+    │   ├── template.yaml
+    │   ├── catalog-info.yaml
+    │   └── README.md
+    │
+    ├── observability-stack/                   ← Phase 3 ✅
+    │   ├── template.yaml
+    │   ├── catalog-info.yaml
+    │   └── README.md
+    │
+    ├── security-scan/                         ← Phase 4 ✅
+    │   ├── template.yaml
+    │   ├── catalog-info.yaml
+    │   └── README.md
+    │
+    └── container-setup/                       ← Phase 4 ✅
+        ├── template.yaml
+        ├── catalog-info.yaml
+        └── README.md
 ```
 
 ---
@@ -73,6 +105,7 @@ Client runs terraform init && terraform apply
 ---
 
 ## Available Templates
+
 ## ⭐ Start Here
 
 ### Full Client Onboarding (`templates/client-onboarding`)
@@ -133,6 +166,7 @@ terraform/
 docs/
 └── infrastructure.md ← auto-generated infrastructure summary
 ```
+
 ### Azure Infrastructure (`templates/azure-infrastructure`)
 
 **What it does:** Provisions production-grade Azure infrastructure for a client.
@@ -181,6 +215,7 @@ terraform/
 docs/
 └── infrastructure.md     ← auto-generated infrastructure summary
 ```
+
 ### GCP Infrastructure (`templates/gcp-infrastructure`)
 
 **What it does:** Provisions production-grade GCP infrastructure for a client.
@@ -210,25 +245,59 @@ gcloud auth application-default login
 | terraform-gcp-cloud-sql | v1.0.0 |
 
 ### CI/CD Pipeline (`templates/cicd-pipeline`)
+
 Sets up CI/CD pipelines for a client repository.
 Tools: GitHub Actions, Jenkins, GitLab CI, ArgoCD.
+Multiple tools can be selected simultaneously.
+
+| Tool | Type | Files generated |
+|---|---|---|
+| GitHub Actions | Push-based | `.github/workflows/build.yml`, `test.yml`, `deploy.yml` |
+| Jenkins | Push-based | `Jenkinsfile` |
+| GitLab CI | Push-based | `.gitlab-ci.yml` |
+| ArgoCD | GitOps | `argocd/application.yaml`, `app-project.yaml`, `namespace.yaml` |
 
 ### Observability Stack (`templates/observability-stack`)
+
 Sets up Prometheus + Grafana + Alertmanager.
-Deployment: Docker Compose or Helm.
+Deployment: Docker Compose (single server) or Helm (Kubernetes).
+Notifications: Slack webhook and/or email.
+
+Alert rules included: CPU, memory, disk, instance down, HTTP error rate, latency, endpoint probe.
 
 ### Security Scan (`templates/security-scan`)
+
 Adds Trivy and OWASP dependency scanning to a client repo.
-Trivy scans run on every push + daily. OWASP runs weekly.
+
+Repository structure generated:
+```
+.github/workflows/
+├── trivy-scan.yml         ← runs on every push + daily 2am UTC
+└── dependency-check.yml   ← runs on push to main + weekly Monday 3am UTC
+security/
+├── trivy/
+│   ├── trivy.yaml
+│   └── .trivyignore
+└── owasp/
+    ├── dependency-check.yml
+    └── suppressions.xml
+```
+
 Results upload to GitHub Security tab as SARIF.
 
 ### Container Setup (`templates/container-setup`)
+
 Containerizes a client application.
-Languages: Node.js, Python, Java, Go.
-Generates: Dockerfile, Docker Compose, Kubernetes manifests, Helm chart.
+Languages: Node.js, Python, Java, Go — all multi-stage builds with non-root users.
 
-
-
+Repository structure generated:
+```
+containers/
+├── dockerfiles/        ← Dockerfile.nodejs, .python, .java, .go
+├── docker-compose/     ← local dev stack with optional DB and Redis
+├── kubernetes/         ← Namespace, Deployment, Service, Ingress, HPA, ConfigMap, Secret
+└── helm/               ← Helm chart with values.yaml and templates/
+```
 
 ---
 
@@ -403,7 +472,7 @@ dependencies:
 
 ### Custom Field Extensions
 
-The `AwsResourcePicker` is a custom React component registered in the Backstage app. Use it like this:
+The pickers are custom React components registered in the Backstage app. Use them like this:
 
 ```yaml
 iac_resources:
@@ -414,19 +483,7 @@ iac_resources:
     environment: ${{ parameters.environment }}
 ```
 
-It returns an object:
-```json
-{
-  "resources": "vpc_ec2_s3",
-  "config": {
-    "vpc_cidr": "10.0.0.0/16",
-    "ec2_instance_type": "t3.medium",
-    "s3_versioning": true
-  }
-}
-```
-
-Access in steps as:
+Access values in steps as:
 ```yaml
 ${{ parameters.iac_resources.resources }}
 ${{ parameters.iac_resources.config.vpc_cidr }}
@@ -439,18 +496,19 @@ Use `if:` to skip steps based on form values:
 ```yaml
 - id: fetch-terraform-vpc
   if: ${{ parameters.iac_tool === 'terraform' and parameters.iac_resources.resources and parameters.iac_resources.resources.includes('vpc') }}
-  action: fetch:plain
+  action: fetch:template
   input:
     url: https://github.com/equaan/opt-it-modules/tree/terraform-aws-vpc-v1.0.0/terraform/aws/networking/vpc
     targetPath: ./terraform/modules/vpc
+    values: {}
 ```
 
 ### Branch Naming
 
-Always make branch names unique to avoid collisions:
+Always make branch names unique and avoid spaces or commas:
 
 ```yaml
-branchName: infra/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.iac_resources.resources or parameters.cicd_tool or 'setup' }}
+branchName: infra/${{ parameters.client_name }}-${{ parameters.environment }}-setup
 ```
 
 Always set `update: true` so re-runs update the existing PR instead of failing:
@@ -503,6 +561,8 @@ Each step shows its status: `Finished`, `Skipping`, or the error.
 | `Git Repository is empty` | Client repo has no commits | Add a README to the client repo first |
 | `if condition was false` unexpectedly | Parameter path is wrong | Log the parameter value — check nesting |
 | Step skipped when it shouldn't be | Wrong `===` comparison | Verify the enum value matches exactly |
+| Files missing from PR | Used `fetch:plain` instead of `fetch:template` | Change to `fetch:template` with `values: {}` |
+| Branch name invalid ref error | Branch name contains spaces or commas | Use static suffix like `setup` instead of tool names |
 
 ### Checking what values were passed
 
@@ -512,6 +572,23 @@ Processing N template files/directories with input values {...}
 ```
 
 This shows exactly what values Backstage passed to the skeleton renderer. If a value is missing or wrong, the issue is in how it's passed from `parameters` to `values` in the step.
+
+---
+
+## Key Lessons Learned
+
+These are hard-won lessons from building this platform. Read before making changes.
+
+| Issue | Fix |
+|---|---|
+| Files not appearing in PR | Use `fetch:template` with `values: {}` — never `fetch:plain`. `fetch:plain` runs but Backstage does not commit the files to the PR |
+| Branch name with spaces is invalid | Tool names like "GitLab CI" break Git refs — always use safe static suffixes like `setup` for branch names that include user-selected values |
+| GCP modules not found | The directory is `terraform/GCP/` (capital) — all template URLs must match exactly. `terraform/gcp/` will silently fail |
+| Template not refreshing in Backstage | Go to the catalog entity → three dots menu → Refresh. Or re-register at `/catalog-import`. Templates are cached and don't auto-reload on push |
+| OWASP files landing in wrong folder | The OWASP source folder contained both the workflow yml and config xml. Split into `owasp/workflow/` and `owasp/config/` subfolders so each can be fetched independently to different `targetPath` values |
+| `filter not found: now` in skeleton | Backstage Nunjucks does not support the `now` filter. Remove `${{ "" | now }}` from all skeleton files |
+| `[object Object]` in branch name | `parameters.iac_resources` is an object — use `.resources` property, not the whole object |
+| Cross-page dependencies | Backstage RJSF v4 cannot have `dependencies` that reference fields on a different page. Put controller and dependent fields on the same page |
 
 ---
 
