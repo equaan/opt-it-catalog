@@ -5,6 +5,7 @@ metadata:
   description: Opt IT Backstage Template Catalog
 spec:
   targets:
+    - ./templates/client-onboarding/template.yaml
     - ./templates/aws-infrastructure/template.yaml
     - ./templates/azure-infrastructure/template.yaml
     - ./templates/gcp-infrastructure/template.yaml

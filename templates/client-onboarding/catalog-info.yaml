@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: client-onboarding-template
+  description: Opt IT Full Client Onboarding Wizard
+spec:
+  targets:
+    - ./template.yaml
