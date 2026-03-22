@@ -189,6 +189,14 @@ gcloud auth application-default login
 | terraform-gcp-gce | v1.0.0 |
 | terraform-gcp-gcs | v1.0.0 |
 | terraform-gcp-cloud-sql | v1.0.0 |
+
+### CI/CD Pipeline (`templates/cicd-pipeline`)
+Sets up CI/CD pipelines for a client repository.
+Tools: GitHub Actions, Jenkins, GitLab CI, ArgoCD.
+
+### Observability Stack (`templates/observability-stack`)
+Sets up Prometheus + Grafana + Alertmanager.
+Deployment: Docker Compose or Helm.
 ---
 
 ## Adding a New Template
@@ -500,6 +508,6 @@ New templates won't appear in Backstage unless they're listed in the root `catal
 | Phase 1 | ✅ Complete | `aws-infrastructure` |
 | Phase 2 | ✅ Complete | `azure-infrastructure` |
 | Phase 2b | ✅ Complete | `gcp-infrastructure` |
-| Phase 3 | 🔜 Planned | `cicd-pipeline`, `observability-stack` |
+| Phase 3 | ✅ Complete | `cicd-pipeline`, `observability-stack` |
 | Phase 4 | 🔜 Planned | `security-baseline`, `container-platform` |
 | Phase 5 | 🔜 Planned | `full-onboarding` (orchestrates all templates) |
