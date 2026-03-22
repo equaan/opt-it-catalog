@@ -102,7 +102,7 @@ spec:
       if: ${{ parameters.security_config.config.enable_owasp }}
       action: fetch:template
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp/workflow
         targetPath: ./.github/workflows
         values:
           client_name:     ${{ parameters.client_name }}
@@ -117,7 +117,7 @@ spec:
       if: ${{ parameters.security_config.config.enable_owasp }}
       action: fetch:template
       input:
-        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp/config
         targetPath: ./security/owasp
         values:
           client_name:     ${{ parameters.client_name }}
