@@ -56,8 +56,11 @@ spec:
 
   steps:
 
-    - id: fetch-trivy
-      name: Fetch Trivy Configuration
+    # ── TRIVY CONFIG FILES ──────────────────────────────────────
+    # Goes to security/trivy/ — config files, not workflows
+
+    - id: fetch-trivy-config
+      name: Fetch Trivy Config
       if: ${{ parameters.security_config.config.enable_trivy }}
       action: fetch:template
       input:
@@ -71,6 +74,9 @@ spec:
           include_medium_severity: ${{ parameters.security_config.config.include_medium_severity }}
           scan_docker_image:       ${{ parameters.security_config.config.scan_docker_image }}
           scan_iac:                ${{ parameters.security_config.config.scan_iac }}
+
+    # ── TRIVY WORKFLOW ──────────────────────────────────────────
+    # Goes to .github/workflows/ — GitHub Actions workflow only
 
     - id: fetch-trivy-workflow
       name: Fetch Trivy GitHub Actions Workflow
@@ -88,17 +94,37 @@ spec:
           scan_docker_image:       ${{ parameters.security_config.config.scan_docker_image }}
           scan_iac:                ${{ parameters.security_config.config.scan_iac }}
 
-    - id: fetch-owasp
-      name: Fetch OWASP Dependency Check
+    # ── OWASP WORKFLOW ──────────────────────────────────────────
+    # dependency-check.yml goes to .github/workflows/
+
+    - id: fetch-owasp-workflow
+      name: Fetch OWASP Workflow
       if: ${{ parameters.security_config.config.enable_owasp }}
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp
         targetPath: ./.github/workflows
         values:
-          client_name:      ${{ parameters.client_name }}
-          environment:      ${{ parameters.environment }}
-          owasp_fail_cvss:  ${{ parameters.security_config.config.owasp_fail_cvss }}
+          client_name:     ${{ parameters.client_name }}
+          environment:     ${{ parameters.environment }}
+          owasp_fail_cvss: ${{ parameters.security_config.config.owasp_fail_cvss }}
+
+    # ── OWASP SUPPRESSIONS ──────────────────────────────────────
+    # suppressions.xml goes to security/owasp/ — config file, not workflow
+
+    - id: fetch-owasp-config
+      name: Fetch OWASP Suppressions Config
+      if: ${{ parameters.security_config.config.enable_owasp }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp
+        targetPath: ./security/owasp
+        values:
+          client_name:     ${{ parameters.client_name }}
+          environment:     ${{ parameters.environment }}
+          owasp_fail_cvss: ${{ parameters.security_config.config.owasp_fail_cvss }}
+
+    # ── PUBLISH PR ──────────────────────────────────────────────
 
     - id: publish-pr
       name: Open Pull Request on Client Repository
@@ -121,14 +147,27 @@ spec:
           | Trivy | ${{ parameters.security_config.config.enable_trivy and '✅ Enabled' or '❌ Not selected' }} |
           | OWASP Dependency Check | ${{ parameters.security_config.config.enable_owasp and '✅ Enabled' or '❌ Not selected' }} |
 
+          ### Repository Structure
+
+          ```
+          .github/
+          └── workflows/
+              ├── trivy-scan.yml         ← Trivy scan workflow
+              └── dependency-check.yml   ← OWASP workflow
+          security/
+          ├── trivy/
+          │   ├── trivy.yaml             ← Trivy config
+          │   └── .trivyignore           ← CVE suppressions
+          └── owasp/
+              ├── dependency-check.yml   ← OWASP config reference
+              └── suppressions.xml       ← False positive suppressions
+          ```
+
           ### Next Steps
 
           1. Merge this PR
-          2. Go to **Settings → Security → Code scanning** to view scan results
-          3. Go to **Actions** to see scan workflow runs
-          4. Review any findings in the **Security** tab
-
-          > ⚠️ Enable GitHub Advanced Security on the repo to see SARIF results in the Security tab.
+          2. Go to **Settings → Security → Code scanning** to view results
+          3. Review findings in the **Security** tab
 
   output:
     links:

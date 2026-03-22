@@ -57,12 +57,15 @@ spec:
 
   steps:
 
+    # ── DOCKERFILE ──────────────────────────────────────────────
+    # Goes to containers/dockerfiles/ — keeps all Dockerfiles together
+
     - id: fetch-dockerfile
       name: Fetch Dockerfile
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/containers/dockerfiles
-        targetPath: ./
+        targetPath: ./containers/dockerfiles
         values:
           client_name:       ${{ parameters.client_name }}
           environment:       ${{ parameters.environment }}
@@ -70,6 +73,8 @@ spec:
           runtime_version:   ${{ parameters.container_config.config.runtime_version }}
           app_port:          ${{ parameters.container_config.config.app_port }}
           health_check_path: ${{ parameters.container_config.config.health_check_path }}
+
+    # ── DOCKER COMPOSE ──────────────────────────────────────────
 
     - id: fetch-docker-compose
       name: Fetch Docker Compose
@@ -79,16 +84,18 @@ spec:
         url: https://github.com/equaan/opt-it-modules/tree/main/containers/docker-compose
         targetPath: ./containers/docker-compose
         values:
-          client_name:       ${{ parameters.client_name }}
-          environment:       ${{ parameters.environment }}
-          language:          ${{ parameters.container_config.config.language }}
-          app_port:          ${{ parameters.container_config.config.app_port }}
-          include_database:  ${{ parameters.container_config.config.include_database }}
-          db_engine:         ${{ parameters.container_config.config.db_engine }}
-          db_name:           ${{ parameters.container_config.config.db_name }}
-          db_user:           ${{ parameters.container_config.config.db_user }}
+          client_name:          ${{ parameters.client_name }}
+          environment:          ${{ parameters.environment }}
+          language:             ${{ parameters.container_config.config.language }}
+          app_port:             ${{ parameters.container_config.config.app_port }}
+          include_database:     ${{ parameters.container_config.config.include_database }}
+          db_engine:            ${{ parameters.container_config.config.db_engine }}
+          db_name:              ${{ parameters.container_config.config.db_name }}
+          db_user:              ${{ parameters.container_config.config.db_user }}
           db_connection_string: "postgresql://${{ parameters.container_config.config.db_user }}:password@db:5432/${{ parameters.container_config.config.db_name }}"
-          include_redis:     ${{ parameters.container_config.config.include_redis }}
+          include_redis:        ${{ parameters.container_config.config.include_redis }}
+
+    # ── KUBERNETES ──────────────────────────────────────────────
 
     - id: fetch-kubernetes
       name: Fetch Kubernetes Manifests
@@ -114,6 +121,8 @@ spec:
           memory_limit:           ${{ parameters.container_config.config.memory_limit }}
           cpu_target_utilization: ${{ parameters.container_config.config.cpu_target_utilization }}
 
+    # ── HELM ────────────────────────────────────────────────────
+
     - id: fetch-helm
       name: Fetch Helm Chart
       if: ${{ parameters.container_config.config.include_helm }}
@@ -138,6 +147,8 @@ spec:
           memory_limit:           ${{ parameters.container_config.config.memory_limit }}
           cpu_target_utilization: ${{ parameters.container_config.config.cpu_target_utilization }}
 
+    # ── PUBLISH PR ──────────────────────────────────────────────
+
     - id: publish-pr
       name: Open Pull Request on Client Repository
       action: publish:github:pull-request
@@ -161,6 +172,33 @@ spec:
           | Kubernetes Manifests | ${{ parameters.container_config.config.include_kubernetes and '✅' or '❌' }} |
           | Helm Chart | ${{ parameters.container_config.config.include_helm and '✅' or '❌' }} |
 
+          ### Repository Structure
+
+          ```
+          containers/
+          ├── dockerfiles/
+          │   ├── Dockerfile.nodejs
+          │   ├── Dockerfile.python
+          │   ├── Dockerfile.java
+          │   └── Dockerfile.go
+          ├── docker-compose/
+          │   └── docker-compose.yml
+          ├── kubernetes/
+          │   ├── namespace.yaml
+          │   ├── deployment.yaml
+          │   ├── service.yaml
+          │   ├── ingress.yaml
+          │   ├── hpa.yaml
+          │   ├── configmap.yaml
+          │   └── secret.yaml
+          └── helm/
+              ├── Chart.yaml
+              ├── values.yaml
+              └── templates/
+                  ├── deployment.yaml
+                  └── _helpers.tpl
+          ```
+
           ### Configuration
 
           | Setting | Value |
@@ -173,11 +211,11 @@ spec:
 
           ### Next Steps
 
-          1. Review the generated Dockerfile and update the build commands if needed
-          2. Update `SECRET_VALUE` placeholders in `containers/kubernetes/secret.yaml`
-          3. Push image to `${{ parameters.container_config.config.container_registry }}/${{ parameters.client_name }}`
-          4. Apply manifests: `kubectl apply -f containers/kubernetes/`
-          5. Or deploy with Helm: `helm install ${{ parameters.client_name }} ./containers/helm`
+          1. Copy the relevant Dockerfile to repo root: `cp containers/dockerfiles/Dockerfile.${{ parameters.container_config.config.language }} Dockerfile`
+          2. Update secret values in `containers/kubernetes/secret.yaml`
+          3. Push image: `docker build -t ${{ parameters.container_config.config.container_registry }}/${{ parameters.client_name }}:latest . && docker push`
+          4. Apply: `kubectl apply -f containers/kubernetes/`
+          5. Or Helm: `helm install ${{ parameters.client_name }} ./containers/helm`
 
   output:
     links:
