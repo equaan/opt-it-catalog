@@ -73,6 +73,25 @@ Client runs terraform init && terraform apply
 ---
 
 ## Available Templates
+## ⭐ Start Here
+
+### Full Client Onboarding (`templates/client-onboarding`)
+
+The master template. For new client onboarding, always use this first.
+
+Combines all phases into one 7-step guided wizard:
+
+| Step | Section | What it sets up |
+|---|---|---|
+| 1 | Client Basics | Name, environment, repo |
+| 2 | Cloud Infrastructure | AWS, Azure, or GCP — your choice |
+| 3 | CI/CD Pipeline | GitHub Actions, Jenkins, GitLab CI, ArgoCD |
+| 4 | Observability | Prometheus, Grafana, Alertmanager |
+| 5 | Security Scanning | Trivy, OWASP Dependency Check |
+| 6 | Containers | Dockerfile, Docker Compose, Kubernetes, Helm |
+| 7 | Review + Create | One PR with everything |
+
+**Output:** Single PR on client repo, branch `onboarding/{client}-{environment}`
 
 ### AWS Infrastructure (`templates/aws-infrastructure`)
 
@@ -524,4 +543,4 @@ New templates won't appear in Backstage unless they're listed in the root `catal
 | Phase 2b | ✅ Complete | `gcp-infrastructure` |
 | Phase 3 | ✅ Complete | `cicd-pipeline`, `observability-stack` |
 | Phase 4 | ✅ Complete | `security-scan`, `container-setup` |
-| Phase 5 | 🔜 Planned | `full-onboarding` (orchestrates all templates) |
+| Phase 5 | ✅ Complete | `client-onboarding` wizard |
