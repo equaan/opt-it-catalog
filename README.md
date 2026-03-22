@@ -197,6 +197,20 @@ Tools: GitHub Actions, Jenkins, GitLab CI, ArgoCD.
 ### Observability Stack (`templates/observability-stack`)
 Sets up Prometheus + Grafana + Alertmanager.
 Deployment: Docker Compose or Helm.
+
+### Security Scan (`templates/security-scan`)
+Adds Trivy and OWASP dependency scanning to a client repo.
+Trivy scans run on every push + daily. OWASP runs weekly.
+Results upload to GitHub Security tab as SARIF.
+
+### Container Setup (`templates/container-setup`)
+Containerizes a client application.
+Languages: Node.js, Python, Java, Go.
+Generates: Dockerfile, Docker Compose, Kubernetes manifests, Helm chart.
+
+
+
+
 ---
 
 ## Adding a New Template
@@ -509,5 +523,5 @@ New templates won't appear in Backstage unless they're listed in the root `catal
 | Phase 2 | ✅ Complete | `azure-infrastructure` |
 | Phase 2b | ✅ Complete | `gcp-infrastructure` |
 | Phase 3 | ✅ Complete | `cicd-pipeline`, `observability-stack` |
-| Phase 4 | 🔜 Planned | `security-baseline`, `container-platform` |
+| Phase 4 | ✅ Complete | `security-scan`, `container-setup` |
 | Phase 5 | 🔜 Planned | `full-onboarding` (orchestrates all templates) |
