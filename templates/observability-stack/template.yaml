@@ -103,7 +103,7 @@ spec:
       action: fetch:template
       input:
         url: https://github.com/equaan/opt-it-modules/tree/main/observability/docker-compose
-        targetPath: ./observability
+        targetPath: ./observability/docker-compose
         values:
           client_name:    ${{ parameters.client_name }}
           environment:    ${{ parameters.environment }}
