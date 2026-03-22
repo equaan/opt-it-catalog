@@ -10,3 +10,5 @@ spec:
     - ./templates/gcp-infrastructure/template.yaml
     - ./templates/cicd-pipeline/template.yaml
     - ./templates/observability-stack/template.yaml
+    - ./templates/security-scan/template.yaml
+    - ./templates/container-setup/template.yaml

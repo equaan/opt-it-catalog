@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: container-setup-template
+  description: Opt IT Container Setup Template
+spec:
+  targets:
+    - ./template.yaml

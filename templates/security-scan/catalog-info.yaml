@@ -1,0 +1,8 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: security-scan-template
+  description: Opt IT Security Scan Template
+spec:
+  targets:
+    - ./template.yaml

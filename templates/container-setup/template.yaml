@@ -1,0 +1,185 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: container-setup
+  title: Container Setup
+  description: Containerizes a client application with Dockerfile, Docker Compose, Kubernetes manifests, and Helm chart.
+  tags:
+    - docker
+    - kubernetes
+    - helm
+    - containers
+    - phase-4
+spec:
+  owner: devops
+  type: infrastructure
+
+  parameters:
+
+    - title: Step 1 - Client Information
+      required:
+        - client_name
+        - environment
+        - repoUrl
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
+
+        environment:
+          title: Environment
+          type: string
+          enum: [dev, staging, prod]
+          enumNames: [Development, Staging, Production]
+          ui:widget: radio
+
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    - title: Step 2 - Container Configuration
+      required:
+        - container_config
+      properties:
+        container_config:
+          title: Container Configuration
+          type: object
+          description: Configure language, runtime, Docker Compose, Kubernetes, and Helm
+          ui:field: ContainerPicker
+          ui:options:
+            environment: ${{ parameters.environment }}
+
+  steps:
+
+    - id: fetch-dockerfile
+      name: Fetch Dockerfile
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/containers/dockerfiles
+        targetPath: ./
+        values:
+          client_name:       ${{ parameters.client_name }}
+          environment:       ${{ parameters.environment }}
+          language:          ${{ parameters.container_config.config.language }}
+          runtime_version:   ${{ parameters.container_config.config.runtime_version }}
+          app_port:          ${{ parameters.container_config.config.app_port }}
+          health_check_path: ${{ parameters.container_config.config.health_check_path }}
+
+    - id: fetch-docker-compose
+      name: Fetch Docker Compose
+      if: ${{ parameters.container_config.config.include_docker_compose }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/containers/docker-compose
+        targetPath: ./containers/docker-compose
+        values:
+          client_name:       ${{ parameters.client_name }}
+          environment:       ${{ parameters.environment }}
+          language:          ${{ parameters.container_config.config.language }}
+          app_port:          ${{ parameters.container_config.config.app_port }}
+          include_database:  ${{ parameters.container_config.config.include_database }}
+          db_engine:         ${{ parameters.container_config.config.db_engine }}
+          db_name:           ${{ parameters.container_config.config.db_name }}
+          db_user:           ${{ parameters.container_config.config.db_user }}
+          db_connection_string: "postgresql://${{ parameters.container_config.config.db_user }}:password@db:5432/${{ parameters.container_config.config.db_name }}"
+          include_redis:     ${{ parameters.container_config.config.include_redis }}
+
+    - id: fetch-kubernetes
+      name: Fetch Kubernetes Manifests
+      if: ${{ parameters.container_config.config.include_kubernetes }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/containers/kubernetes/base
+        targetPath: ./containers/kubernetes
+        values:
+          client_name:            ${{ parameters.client_name }}
+          environment:            ${{ parameters.environment }}
+          k8s_namespace:          ${{ parameters.container_config.config.k8s_namespace }}
+          container_registry:     ${{ parameters.container_config.config.container_registry }}
+          domain:                 ${{ parameters.container_config.config.domain }}
+          app_port:               ${{ parameters.container_config.config.app_port }}
+          health_check_path:      ${{ parameters.container_config.config.health_check_path }}
+          initial_replicas:       ${{ parameters.container_config.config.initial_replicas }}
+          min_replicas:           ${{ parameters.container_config.config.min_replicas }}
+          max_replicas:           ${{ parameters.container_config.config.max_replicas }}
+          cpu_request:            ${{ parameters.container_config.config.cpu_request }}
+          memory_request:         ${{ parameters.container_config.config.memory_request }}
+          cpu_limit:              ${{ parameters.container_config.config.cpu_limit }}
+          memory_limit:           ${{ parameters.container_config.config.memory_limit }}
+          cpu_target_utilization: ${{ parameters.container_config.config.cpu_target_utilization }}
+
+    - id: fetch-helm
+      name: Fetch Helm Chart
+      if: ${{ parameters.container_config.config.include_helm }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/containers/helm
+        targetPath: ./containers/helm
+        values:
+          client_name:            ${{ parameters.client_name }}
+          environment:            ${{ parameters.environment }}
+          container_registry:     ${{ parameters.container_config.config.container_registry }}
+          domain:                 ${{ parameters.container_config.config.domain }}
+          app_port:               ${{ parameters.container_config.config.app_port }}
+          health_check_path:      ${{ parameters.container_config.config.health_check_path }}
+          k8s_namespace:          ${{ parameters.container_config.config.k8s_namespace }}
+          initial_replicas:       ${{ parameters.container_config.config.initial_replicas }}
+          min_replicas:           ${{ parameters.container_config.config.min_replicas }}
+          max_replicas:           ${{ parameters.container_config.config.max_replicas }}
+          cpu_request:            ${{ parameters.container_config.config.cpu_request }}
+          memory_request:         ${{ parameters.container_config.config.memory_request }}
+          cpu_limit:              ${{ parameters.container_config.config.cpu_limit }}
+          memory_limit:           ${{ parameters.container_config.config.memory_limit }}
+          cpu_target_utilization: ${{ parameters.container_config.config.cpu_target_utilization }}
+
+    - id: publish-pr
+      name: Open Pull Request on Client Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: containers/${{ parameters.client_name }}-${{ parameters.environment }}-${{ parameters.container_config.config.language }}
+        targetBranchName: main
+        update: true
+        title: "feat(containers): add ${{ parameters.container_config.config.language }} container setup for ${{ parameters.client_name }}"
+        description: |
+          ## Container Setup 🐳
+
+          Provisioned by **Opt IT Backstage**.
+
+          ### What Was Generated
+
+          | Component | Status |
+          |---|---|
+          | Dockerfile (${{ parameters.container_config.config.language }}) | ✅ |
+          | Docker Compose | ${{ parameters.container_config.config.include_docker_compose and '✅' or '❌' }} |
+          | Kubernetes Manifests | ${{ parameters.container_config.config.include_kubernetes and '✅' or '❌' }} |
+          | Helm Chart | ${{ parameters.container_config.config.include_helm and '✅' or '❌' }} |
+
+          ### Configuration
+
+          | Setting | Value |
+          |---|---|
+          | Language | ${{ parameters.container_config.config.language }} ${{ parameters.container_config.config.runtime_version }} |
+          | Port | ${{ parameters.container_config.config.app_port }} |
+          | Namespace | ${{ parameters.container_config.config.k8s_namespace }} |
+          | Domain | ${{ parameters.container_config.config.domain }} |
+          | Replicas | ${{ parameters.container_config.config.min_replicas }}–${{ parameters.container_config.config.max_replicas }} |
+
+          ### Next Steps
+
+          1. Review the generated Dockerfile and update the build commands if needed
+          2. Update `SECRET_VALUE` placeholders in `containers/kubernetes/secret.yaml`
+          3. Push image to `${{ parameters.container_config.config.container_registry }}/${{ parameters.client_name }}`
+          4. Apply manifests: `kubectl apply -f containers/kubernetes/`
+          5. Or deploy with Helm: `helm install ${{ parameters.client_name }} ./containers/helm`
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}

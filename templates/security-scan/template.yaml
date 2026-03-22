@@ -1,0 +1,136 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: security-scan
+  title: Security Scan Setup
+  description: Adds Trivy container/IaC scanning and OWASP dependency checking to a client repository.
+  tags:
+    - security
+    - trivy
+    - owasp
+    - phase-4
+spec:
+  owner: devops
+  type: security
+
+  parameters:
+
+    - title: Step 1 - Client Information
+      required:
+        - client_name
+        - environment
+        - repoUrl
+      properties:
+        client_name:
+          title: Client Name
+          type: string
+          description: "Lowercase alphanumeric and hyphens only. Example: acme-corp"
+          ui:autofocus: true
+
+        environment:
+          title: Environment
+          type: string
+          enum: [dev, staging, prod]
+          enumNames: [Development, Staging, Production]
+          ui:widget: radio
+
+        repoUrl:
+          title: Client Repository
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+    - title: Step 2 - Security Configuration
+      required:
+        - security_config
+      properties:
+        security_config:
+          title: Security Configuration
+          type: object
+          description: Configure security scanners for this repository
+          ui:field: SecurityPicker
+          ui:options:
+            environment: ${{ parameters.environment }}
+
+  steps:
+
+    - id: fetch-trivy
+      name: Fetch Trivy Configuration
+      if: ${{ parameters.security_config.config.enable_trivy }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/trivy
+        targetPath: ./security/trivy
+        values:
+          client_name:             ${{ parameters.client_name }}
+          environment:             ${{ parameters.environment }}
+          trivy_exit_code:         ${{ parameters.security_config.config.trivy_exit_code }}
+          ignore_unfixed:          ${{ parameters.security_config.config.ignore_unfixed }}
+          include_medium_severity: ${{ parameters.security_config.config.include_medium_severity }}
+          scan_docker_image:       ${{ parameters.security_config.config.scan_docker_image }}
+          scan_iac:                ${{ parameters.security_config.config.scan_iac }}
+
+    - id: fetch-trivy-workflow
+      name: Fetch Trivy GitHub Actions Workflow
+      if: ${{ parameters.security_config.config.enable_trivy }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/github-actions
+        targetPath: ./.github/workflows
+        values:
+          client_name:             ${{ parameters.client_name }}
+          environment:             ${{ parameters.environment }}
+          trivy_exit_code:         ${{ parameters.security_config.config.trivy_exit_code }}
+          ignore_unfixed:          ${{ parameters.security_config.config.ignore_unfixed }}
+          include_medium_severity: ${{ parameters.security_config.config.include_medium_severity }}
+          scan_docker_image:       ${{ parameters.security_config.config.scan_docker_image }}
+          scan_iac:                ${{ parameters.security_config.config.scan_iac }}
+
+    - id: fetch-owasp
+      name: Fetch OWASP Dependency Check
+      if: ${{ parameters.security_config.config.enable_owasp }}
+      action: fetch:template
+      input:
+        url: https://github.com/equaan/opt-it-modules/tree/main/security/owasp
+        targetPath: ./.github/workflows
+        values:
+          client_name:      ${{ parameters.client_name }}
+          environment:      ${{ parameters.environment }}
+          owasp_fail_cvss:  ${{ parameters.security_config.config.owasp_fail_cvss }}
+
+    - id: publish-pr
+      name: Open Pull Request on Client Repository
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: security/${{ parameters.client_name }}-${{ parameters.environment }}-setup
+        targetBranchName: main
+        update: true
+        title: "feat(security): add security scanning for ${{ parameters.client_name }}"
+        description: |
+          ## Security Scan Setup 🔒
+
+          Provisioned by **Opt IT Backstage**.
+
+          ### Scanners Added
+
+          | Scanner | Status |
+          |---|---|
+          | Trivy | ${{ parameters.security_config.config.enable_trivy and '✅ Enabled' or '❌ Not selected' }} |
+          | OWASP Dependency Check | ${{ parameters.security_config.config.enable_owasp and '✅ Enabled' or '❌ Not selected' }} |
+
+          ### Next Steps
+
+          1. Merge this PR
+          2. Go to **Settings → Security → Code scanning** to view scan results
+          3. Go to **Actions** to see scan workflow runs
+          4. Review any findings in the **Security** tab
+
+          > ⚠️ Enable GitHub Advanced Security on the repo to see SARIF results in the Security tab.
+
+  output:
+    links:
+      - title: View Pull Request
+        url: ${{ steps['publish-pr'].output.remoteUrl }}
